@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+        /* Flexbox pour le header */
+        header {
+            display: flex;
+            justify-content: space-between;  /* Distribue l'espace entre les éléments */
+            align-items: center;             /* Aligne verticalement les éléments */
+            padding: 10px 20px;
+        }
+
+        nav {
+            display: flex;
+            gap: 20px; /* Espacement entre les liens */
+        }
+
+        form {
+            margin-left: auto;  /* Force le formulaire (bouton) à s'aligner à droite */
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50; /* Couleur de fond du bouton */
+            color: white;              /* Couleur du texte */
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049; /* Changement de couleur au survol */
+        }
+
+        /* Style pour la popup */
+        .popup {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5); /* Fond semi-transparent */
+        }
+        
+        .popup-content {
+            background-color: white;
+            padding: 20px;
+            margin: 15% auto;
+            width: 40%;
+            border-radius: 10px;
+        }
+
+        #playerNames {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+
+    </style>
+</head>
+<body>
+    <header>
+        <a href="{{ url_for('main.index') }}">
+            <img src="{{ url_for('static', filename='img/logo.jpg') }}" alt="Logo" class="logo">
+        </a>
+        <nav>
+            <a href="{{ url_for('main.index') }}">Accueil</a>
+            <a href="{{ url_for('main.about') }}">À propos</a>
+        </nav>
+        <!-- Formulaire avec bouton aligné à droite -->
+        <form id="start-form" action="{{ url_for('main.start_backend') }}" method="POST">
+            <button type="button" id="start-button">{{ button_text }}</button>
+        </form>
+    </header>
+    
+    <!-- Popup pour saisir les noms des joueurs -->
+    <div id="popup" class="popup">
+        <div class="popup-content">
+            <h3>Entrez les noms des joueurs (séparés par des virgules)</h3>
+            <textarea id="playerNames" rows="4" placeholder="Ex: John, Paul, Ringo"></textarea>
+            <br>
+            <button id="submitPlayers">Confirmer</button>
+            <button id="cancel">Annuler</button>
+        </div>
+    </div>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <script>
+        const startButton = document.getElementById("start-button");
+        const startForm = document.getElementById("start-form");
+        const popup = document.getElementById("popup");
+        const submitButton = document.getElementById("submitPlayers");
+        const cancelButton = document.getElementById("cancel");
+        const playerNamesInput = document.getElementById("playerNames");
+    
+        let players = [];  // Liste des joueurs
+    
+        // Lorsqu'on clique sur "Commencer une partie" ou "Terminer la partie"
+        startButton.addEventListener("click", function(event) {
+            event.preventDefault();  // Empêche le formulaire de soumettre immédiatement
+    
+            // Si le texte du bouton est "Terminer la partie", alors on appelle l'API pour arrêter la partie
+            if (startButton.textContent === "Terminer la partie") {
+                // Faire une requête POST pour terminer la partie
+                fetch("/start_backend", { method: "POST" })
+                    .then(response => {
+                        if (response.redirected) {
+                            window.location.href = response.url; // Redirige vers la page d'accueil après l'arrêt
+                        }
+                    })
+                    .catch(err => {
+                        console.error("Erreur lors de l'arrêt du backend:", err);
+                    });
+            } else {
+                // Si le texte du bouton est "Commencer une partie", afficher la popup pour saisir les joueurs
+                popup.style.display = "block";  // Afficher la popup
+            }
+        });
+    
+        // Lorsqu'on confirme les joueurs dans la popup
+        submitButton.addEventListener("click", function() {
+            players = playerNamesInput.value.split(',').map(player => player.trim()).filter(player => player.length > 0);
+    
+            if (players.length > 0) {
+                // Envoi des joueurs via une requête AJAX
+                fetch("/set_players", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ players: players })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Fermeture de la popup après l'envoi
+                    popup.style.display = "none";
+    
+                    // Maintenant qu'on a les joueurs, on peut envoyer une requête à /start_backend
+                    // Lancer la partie
+                    return fetch("/start_backend", { method: "POST" });
+                })
+                .then(response => {
+                    if (response.ok) {
+                        // Mise à jour du texte du bouton et changement de comportement
+                        startButton.textContent = "Terminer la partie";
+                    } else {
+                        alert("Erreur lors du lancement du backend.");
+                    }
+                })
+                .catch(err => {
+                    console.error("Erreur lors de l'envoi des joueurs:", err);
+                    alert("Une erreur est survenue.");
+                });
+            } else {
+                alert("Veuillez entrer au moins un joueur.");
+            }
+        });
+    
+        // Annuler et fermer la popup
+        cancelButton.addEventListener("click", function() {
+            popup.style.display = "none";  // Fermer la popup sans rien faire
+        });
+    </script>
+    
+    
+</body>
+</html>

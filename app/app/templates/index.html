@@ -1,0 +1,62 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="content-container">
+    <!-- Image à gauche -->
+    <div class="image-column">
+        <img id="dartboard-image" src="{{ url_for('static', filename='img/dart_board.jpg') }}" alt="Grande Image" class="large-image">
+    </div>
+
+    <!-- Texte à droite -->
+    <div class="text-column">
+        <h1 id="current-player-name">Joueur actuel : Chargement...</h1>
+        <pre id="file-content">Chargement...</pre>
+    </div>
+</div>
+
+<script>
+    // Fonction pour actualiser le contenu du fichier
+    function fetchFileContent() {
+        fetch('/get-file-content')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('file-content').textContent = data.content;
+            })
+            .catch(err => {
+                console.error('Erreur lors du chargement du fichier :', err);
+            });
+    }
+
+    // Fonction pour actualiser l'image
+    function refreshImage() {
+        const imageElement = document.getElementById('dartboard-image');
+        // Ajout d'un paramètre unique pour éviter la mise en cache du navigateur
+        const timestamp = new Date().getTime();
+        imageElement.src = "{{ url_for('static', filename='img/dart_board.jpg') }}?" + timestamp;
+    }
+
+    // Fonction pour actualiser le nom du joueur
+    function updateCurrentPlayer() {
+        fetch('/get-current-player')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('current-player-name').textContent = `Joueur actuel : ${data.player_name}`;
+            })
+            .catch(err => {
+                console.error('Erreur lors du chargement du joueur actuel :', err);
+            });
+    }
+
+    // Charger le contenu, actualiser l'image et le joueur toutes les secondes
+    setInterval(() => {
+        fetchFileContent();
+        refreshImage();
+        updateCurrentPlayer();
+    }, 1000);
+
+    // Charger immédiatement au démarrage
+    fetchFileContent();
+    refreshImage();
+    updateCurrentPlayer();
+</script>
+{% endblock %}
